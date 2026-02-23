@@ -26,6 +26,13 @@ dependencies = [
 
     # ── HTTP Client (Phase 3.5: GitHub API for rubric fetching) ─────────────
     "httpx>=0.27.0",
+
+    # ── LLM Grading (Phase 3.5) ──────────────────────────────────────────────
+    # Langchain for structured LLM output, Jinja2 for prompt templates.
+    "langchain-core>=0.3.0",
+    "langchain-google-genai>=2.1.0",
+    "langchain-openai>=0.3.0",
+    "jinja2>=3.1.0",
 ]
 
 [dependency-groups]

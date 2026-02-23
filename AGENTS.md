@@ -39,10 +39,22 @@
 - [x] Implement admin review endpoints: list, view, review with status guards.
 - [x] Migration: `is_admin` column on `profiles`.
 
-**Phase 3.5 implementation tasks (LLM Integration):**
-- [ ] Langchain integration — orchestrate commercial LLM APIs with structured output parsers.
-- [ ] Background rubric-fetching from `vietfood/cs4all-content` via GitHub API (`GITHUB_TOKEN`).
-- [ ] Write `llm_score`, `llm_feedback`, update `status = 'ai_graded'` via Service Role Key.
+**Phase 3.5 implementation tasks (LLM Integration): ✅ COMPLETE**
+- [x] Langchain integration — structured output via `with_structured_output(GradingResponse)`.
+- [x] Rubric component for content — `<Rubric hidden>` in MDX, parsed from GitHub API.
+- [x] Background rubric-fetching from `vietfood/cs4all-content` via GitHub Contents API.
+- [x] Jinja2 prompt template — user-editable, English prompt with language field.
+- [x] Write `llm_score`, `llm_feedback`, update `status = 'ai_graded'` via Service Role Key.
+- [x] Error handling: `grading_failed` status on permanent failures, retry on transient.
+- [x] Error handling: `grading_failed` status on permanent failures, retry on transient.
+- [x] Migration: `grading_failed` added to status CHECK constraint.
+
+**Phase 4 implementation tasks (LLM Hints): ✅ COMPLETE**
+- [x] Implement `POST /api/v1/hint` (SSE streaming API).
+- [x] JWT validation and Redis rate-limiting (20 asks/day).
+- [x] Implement `fetch_lesson_context()` in `github.py` for page-level info.
+- [x] Jinja2 Socratic hint prompt with `[ref:]` citation markers.
+- [x] `stream_hint()` async generator via Langchain `astream()`.
 
 ---
 
@@ -72,33 +84,44 @@ cs4all-backend/
 │   ├── core/
 │   │   ├── __init__.py
 │   │   ├── config.py              # Pydantic Settings v2 — get_settings() singleton
-│   │   └── logging.py             # structlog setup — get_logger(), setup_logging()
+│   │   ├── logging.py             # structlog setup — get_logger(), setup_logging()
+│   │   └── auth.py                # require_admin dependency (JWT + is_admin)
 │   │
 │   ├── api/
 │   │   ├── __init__.py
 │   │   └── v1/
 │   │       ├── __init__.py
 │   │       ├── health.py          # GET /api/v1/health — live Supabase + Redis probes
-│   │       └── grade.py           # POST /api/v1/grade — webhook receiver + Redis enqueue
+│   │       ├── grade.py           # POST /api/v1/grade — webhook receiver + Redis enqueue
+│   │       ├── admin.py           # Admin review endpoints (3 routes)
+│   │       └── hint.py            # POST /api/v1/hint — SSE streaming hints
 │   │
 │   ├── workers/
 │   │   ├── __init__.py
-│   │   └── grading_worker.py      # Phase 3 stub — BRPOP → fetch → grade → write back
+│   │   └── grading_worker.py      # Phase 3.5 — BRPOP → fetch → LLM grade → write back
 │   │
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── supabase.py            # init_supabase(), get_supabase() — lifespan-managed
-│   │   └── redis_client.py        # init_redis(), get_redis(), close_redis() — async
+│   │   ├── redis_client.py        # init_redis(), get_redis(), close_redis() — async
+│   │   ├── llm.py                 # Langchain LLM grading — grade_submission(), stream_hint()
+│   │   ├── github.py              # GitHub API content fetcher — fetch_exercise_content(), fetch_lesson_context()
+│   │   ├── prompt.py              # Jinja2 grading prompt template
+│   │   └── hint.py                # Jinja2 Socratic hint prompt template
 │   │
 │   └── schemas/
 │       ├── __init__.py
-│       └── grading.py             # SupabaseWebhookPayload, GradingResponse, HealthResponse
+│       ├── grading.py             # SupabaseWebhookPayload, GradingResponse, HealthResponse
+│       ├── admin.py               # Admin request/response schemas
+│       └── hint.py                # HintRequest schema
 │
 ├── supabase/
 │   └── migrations/                # SQL migration files — run manually, never by app code
 │       ├── 20260221000000_create_profiles.sql
 │       ├── 20260221000001_create_user_progress.sql
-│       └── 20260221000002_create_exercise_submissions.sql
+│       ├── 20260221000002_create_exercise_submissions.sql
+│       ├── 20260221000003_add_is_admin_to_profiles.sql
+│       └── 20260223000000_add_grading_failed_status.sql
 │
 └── docs/                          # Cross-repo docs (read-only for agents)
     ├── AGENTS.md, BACKEND.md, DATABASE.md, DEVELOPMENT.md, ARCHITECTURE.md
@@ -316,3 +339,43 @@ Not applicable to this repo.
   - Status guard on review: rejects already-reviewed submissions (409 Conflict).
   - Worker in Phase 3 logs for review queue only; Langchain grading deferred to Phase 3.5.
 - **Blockers**: None. Phase 3.5 (LLM grading via Langchain) can begin.
+
+**2026-02-23 — Session 5**
+- **What was worked on**: Phase 3.5 — LLM-Assisted Grading Integration.
+- **Files created**:
+  - `app/services/llm.py` (Langchain grading: Gemini → OpenAI fallback, `with_structured_output(GradingResponse)`)
+  - `app/services/github.py` (GitHub Contents API fetcher: parse ExerciseBlock, extract Question/Solution/Rubric)
+  - `app/services/prompt.py` (Jinja2 grading prompt template: English, with language field for Vietnamese)
+  - `supabase/migrations/20260223000000_add_grading_failed_status.sql`
+- **Files modified**:
+  - `app/workers/grading_worker.py` (full Phase 3.5 pipeline: GitHub fetch → LLM grade → DB write)
+  - `app/core/config.py` (added `llm_model` setting)
+  - `pyproject.toml` (added langchain-core, langchain-google-genai, langchain-openai, jinja2)
+  - `.env.example` (added `LLM_MODEL`)
+- **Cross-repo changes** (with user permission):
+  - `cs4all-frontend/src/components/blog/Rubric.astro` (new: `data-exercise-role="rubric"` hidden wrapper)
+  - `cs4all-frontend/src/components/ui/exercise-block.tsx` (rubric parsing comments)
+  - `.content/note/prml/1-exercise/index.mdx` (added `<Rubric hidden>` blocks to exercises 1-1 and 1-2)
+- **Decisions made**:
+  - Rubric defined as `<Rubric hidden>` component inside ExerciseBlock with JSON criteria (not frontmatter).
+  - LLM provider priority: Gemini → OpenAI. Configurable via `LLM_MODEL` env var.
+  - Prompt template uses Jinja2 — user-editable, stored in `app/services/prompt.py`.
+  - `grading_failed` added as a valid status for permanent LLM failures.
+- **Blockers**: None.
+
+**2026-02-23 — Session 6**
+- **What was worked on**: Phase 4 — LLM-Assisted Hints Backend Implementation.
+- **Files created**:
+  - `app/api/v1/hint.py` (SSE streaming API + JWT auth + Redis rate-limiting)
+  - `app/services/hint.py` (Jinja2 Socratic prompt with `[ref:]` citation markers)
+  - `app/schemas/hint.py` (HintRequest schema)
+- **Files modified**:
+  - `app/services/llm.py` (added `stream_hint()` async generator)
+  - `app/services/github.py` (added `fetch_lesson_context()` and `LessonContext`)
+  - `app/main.py` (registered hint router)
+- **Decisions made**:
+  - Hints are streamed token-by-token via Server-Sent Events (`text/event-stream`).
+  - LLM acts as a Socratic tutor, never giving direct answers.
+  - LLM instructions include citing content with `[ref:"..."]`.
+  - Endpoint requires Supabase JWT and enforces a 20 asks/day limit via Redis counter.
+- **Blockers**: None.

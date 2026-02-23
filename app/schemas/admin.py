@@ -21,11 +21,6 @@ class ReviewRequest(BaseModel):
     """Body of POST /api/v1/admin/submissions/{id}/review."""
 
     reviewer_score: int = Field(..., ge=0, le=100, description="Human reviewer's score (0-100)")
-    reviewer_comment: str | None = Field(
-        default=None,
-        max_length=5000,
-        description="Optional reviewer comment or notes (not stored in llm_feedback)",
-    )
 
 
 # ── Response models ────────────────────────────────────────────────────────────

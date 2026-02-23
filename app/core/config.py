@@ -58,6 +58,12 @@ class Settings(BaseSettings):
         description="Read-only PAT scoped to vietfood/cs4all-content (Phase 3.5+)",
     )
 
+    # ── LLM Model Override ───────────────────────────────────────────────────
+    llm_model: str | None = Field(
+        default=None,
+        description="Override default LLM model name (e.g. 'gemini-2.0-flash', 'gpt-4o-mini')",
+    )
+
     # ── Application ───────────────────────────────────────────────────────────
     environment: Literal["development", "production"] = Field(
         default="development",

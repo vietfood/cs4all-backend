@@ -104,11 +104,12 @@ def create_app() -> FastAPI:
     )
 
     # ── Routers ───────────────────────────────────────────────────────────────
-    from app.api.v1 import admin, grade, health  # noqa: PLC0415  (deferred import avoids circular deps at configure time)
+    from app.api.v1 import admin, grade, health, hint  # noqa: PLC0415  (deferred import avoids circular deps at configure time)
 
     app.include_router(health.router, prefix="/api/v1", tags=["Health"])
     app.include_router(grade.router, prefix="/api/v1", tags=["Grading"])
     app.include_router(admin.router, prefix="/api/v1", tags=["Admin"])
+    app.include_router(hint.router, prefix="/api/v1", tags=["Hints"])
 
     @app.get("/", include_in_schema=False)
     async def root() -> dict:

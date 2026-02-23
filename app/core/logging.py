@@ -41,8 +41,6 @@ def setup_logging(environment: str = "development") -> None:
     shared_processors: list[Processor] = [
         # Inject the log level (DEBUG, INFO, …) into the event dict.
         structlog.stdlib.add_log_level,
-        # Inject loggers name (module path) as "logger".
-        structlog.stdlib.add_logger_name,
         # Add ISO-8601 timestamp.
         structlog.processors.TimeStamper(fmt="iso"),
         # Render exception tracebacks if present.
