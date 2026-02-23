@@ -91,8 +91,7 @@ def create_app() -> FastAPI:
         ["*"]
         if not settings.is_production
         else [
-            # TODO (Phase 3): Replace with the actual production Astro URL.
-            "https://cs4all.vn",
+            "https://cs4all-vn.vercel.app",
         ]
     )
     app.add_middleware(
